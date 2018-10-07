@@ -5,24 +5,9 @@ extern crate serde_derive;
 extern crate serde_yaml;
 extern crate yaml_rust;
 
-use yaml_rust::*;
 use std::collections::HashMap;
-
-pub const FST_YAML_STR: &str = "
-    dict:
-      A: jedna
-      B: druga
-      C: trzej
-      D: czterej
-      E: pięciu
-    root:
-      foo:
-        - jeden
-        - dwa
-        - trzy
-      bar:
-        - 1
-";
+use std::hash::Hash;
+use std::fmt::Debug;
 
 pub const FLAG_CFG_YAML: &str = "
 ---
@@ -31,66 +16,147 @@ global:
     Value: \"0x1089\"
 dependent:
   \"branch\":
-    \"v1.0\":
+    \"v1.x\":
       \"01\":
         Spec:
           comment: Makes possible to use debug mode
           value: \"-1\"
+  \"target\":
+    \"3310r\":
+      \"01\":
+        Spec:
+          comment: Makes possible to use debug mode
+          value: \"10\"
+    \"5511\":
+      \"01\":
+        Spec:
+          comment: Makes possible to use debug mode
+          value: \"11\"
 ";
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub const FLAG_CFG_YAML2: &str = "
+---
+global:
+  \"0\":
+    Value: \"0x1037\"
+dependent:
+  \"branch\":
+    \"v1.x\":
+      \"01\":
+        Spec:
+          comment: Makes possible to use debug mode
+          value: \"371\"
+  \"target\":
+    \"3310r\":
+      \"01\":
+        Spec:
+          comment: Makes possible to use debug mode
+          value: \"3710\"
+    \"5511\":
+      \"01\":
+        Spec:
+          comment: Makes possible to use debug mode
+          value: \"3711\"
+";
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 struct FlagsConfig {
     global: HashMap<String, Flag>,
     dependent: HashMap<String, HashMap<String, HashMap<String, Flag>>>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 enum Flag {
     Value(String),
-    Spec{value: String, comment: String},
+    Spec{
+        value: String,
+        comment: String,
+    },
 }
 
-#[derive(Debug)]
-enum Tree {
-    Branch(Box<Tree>),
-    Leaf,
-}
-
-pub fn yamel(s: &str) -> (String, i64) {
-    let docs = YamlLoader::load_from_str(s).unwrap();
-    let dict = &docs[0];
-
-    println!("Mapa: {:?}", dict);
-
-    (
-        String::from(dict["root"]["foo"][0].as_str().unwrap()),
-        match dict["root"]["bar"][0].as_i64() {
-            Some(val) => val,
-            None => 0,
-        },
-    )
-}
-
-fn merge_glob(fst: HashMap<String, Flag>, snd: HashMap<String, Flag>) -> HashMap<String, Flag> {
-   let mut output_map : HashMap<String, Flag> = HashMap::new();
-
+fn merge_glob<T, U>(fst: HashMap<T, U>, snd: HashMap<T, U>) -> HashMap<T, U>
+    where
+    T: Eq + Hash
+{
+   let mut output_map : HashMap<T, U> = HashMap::new();
    output_map.extend(fst);
    output_map.extend(snd);
 
    output_map
 }
 
-pub fn merge<'a>(fst: &HashMap<&'a str, &'a str>, snd: &HashMap<&'a str, &'a str>) -> HashMap<&'a str, &'a str> {
-   let mut output_map : HashMap<&'a str, &'a str> = HashMap::new();
+fn resolve_dependent<P, Q, T>(
+    input: HashMap<P, HashMap<Q, HashMap<T, Flag>>>,
+    assignments: &Vec<(P, Q)>
+) -> HashMap<T, Flag>
+    where
+    P: Eq + Hash + Clone + Debug,
+    Q: Eq + Hash + Clone + Debug,
+    T: Eq + Hash + Clone + Debug,
+{
+    let mut out: HashMap<T, Flag> = HashMap::new();
+    for a in assignments {
+        println!("Element: {:?}", a);
+        // types errors
+        //let values_map = match input.get(&a.0) {
+        //    Some(map) => map,
+        //    None => HashMap::new(),
+        //};
+        //let flags_map = match values_map.get(&a.1) {
+        //    Some(map) => map,
+        //    None => HashMap::new(),
+        //};
+        //out.extend(flags_map);
+        let values_map = input.get(&a.0).unwrap();
+        let flags_map = values_map.get(&a.1).unwrap();
+        for (key, value) in flags_map.iter() {
+            out.insert(key.to_owned(), value.clone());
+        }
+    };
 
-   output_map.extend(fst);
-   output_map.extend(snd);
-
-   output_map
+    out
 }
 
-pub fn abc() -> String {
-    String::from("abc")
+fn to_flags_string(flags_map: HashMap<String, Flag>, sep_out: &str) -> String {
+    let mut out = String::new();
+    for (flag_key, flag_value) in flags_map {
+        out += &(flag_key + sep_out + &(
+            match flag_value {
+                Flag::Value(flag_str_value) => flag_str_value,
+                Flag::Spec{ value: flag_str_value, comment: _} => flag_str_value,
+            }) + "\n");
+    }
+
+    out
+}
+
+pub fn go() {
+    let mut assignments: Vec<(String, String)> = vec![
+        ("branch".to_string(), "v1.x".to_string()),
+        ("target".to_string(), "A".to_string()),
+    ];
+
+    let des: FlagsConfig = 
+        match serde_yaml::from_str(&FLAG_CFG_YAML) {
+            Ok(r) => r,
+            Err(msg) => panic!["O kurde: {}", msg],
+        };
+
+    let des2: FlagsConfig = 
+        match serde_yaml::from_str(&FLAG_CFG_YAML2) {
+            Ok(r) => r,
+            Err(msg) => panic!["O kurde: {}", msg],
+        };
+
+    let globs: HashMap<String, Flag> = merge_glob(des.global, des2.global);
+    let deps1: HashMap<String, Flag> = resolve_dependent(des.dependent, &assignments);
+    let deps2: HashMap<String, Flag> = resolve_dependent(des2.dependent, &assignments);
+    let deps: HashMap<String, Flag> = merge_glob(deps1, deps2);
+
+    let res: HashMap<String, Flag> = merge_glob(globs, deps);
+
+    let output = to_flags_string(res, "=");
+    println!("Our flagconfig:\n{}", output);
 }
 
 #[cfg(test)]
@@ -98,114 +164,78 @@ mod tests {
     use super::*;
 
     #[test]
-    fn checkit() {
-        assert_eq!(2+2, 4)
+    fn go_checking() {
+        go()
     }
 
     #[test]
-    fn checkabc() {
-        assert_eq!("abc".to_string(), abc())
-    }
-
-    #[test]
-    fn correct_value_from_yaml() {
-        assert_eq!(yamel(FST_YAML_STR), ("jeden".to_string(), 1))
-    }
-
-    #[test]
-    fn merging_hashes() {
+    fn conversion_to_flag_string() {
         let fst = hashmap!{
-            "A" => "jedna",
-            "B" => "druga",
-            "C" => "trzecia",
+            String::from("10") => Flag::Spec{value: "13".to_string(), comment: String::from("Disables feature #66")},
+            String::from("0x1201") => Flag::Value(String::from("07")),
+        };
+
+        let exp_part1: String = "10=13\n".to_string();
+        let exp_part2: String = "0x1201=07\n".to_string();
+        let done = to_flags_string(fst, "=");
+
+        println!("str: {:?}", &done);
+        println!("exp_part1: {:?}", &exp_part1);
+        println!("exp_part2: {:?}", &exp_part2);
+
+        //not deterministic order !!!
+        //assert_eq!(done, exp);
+
+        assert!(&done.as_str().contains(&exp_part1));
+        assert!(&done.as_str().contains(&exp_part2));
+    }
+
+    #[test]
+    fn resolving_dependent() {
+        let des: FlagsConfig = 
+            match serde_yaml::from_str(&FLAG_CFG_YAML) {
+                Ok(r) => r,
+                Err(msg) => panic!["O kurde: {}", msg],
+            };
+        println!("{:?}", des);
+        let sels = vec![
+            ("branch".to_string(), "v1.x".to_string()),
+            ("target".to_string(), "3310r".to_string()),
+        ];
+
+        for sel in sels.iter()  {
+            println!("Only dependent for {}={}: {:?}.",
+                     sel.0,
+                     sel.1,
+                     &des.dependent.get(&sel.0).unwrap().get(&sel.1).unwrap());
+        }
+        let rdep = resolve_dependent(des.dependent, &sels);
+        println!("This is resolved map: {:?}", rdep);
+    }
+
+    #[test]
+    fn globals_merging() {
+        let fst = hashmap!{
+            String::from("10") => Flag::Spec{value: "13".to_string(), comment: String::from("Disables feature #66")},
+            String::from("0x1201") => Flag::Value(String::from("07")),
         };
         let snd = hashmap!{
-            "C" => "trzej",
-            "D" => "czterej",
-            "E" => "pięciu",
+            String::from("10") => Flag::Spec{value: "17".to_string(), comment: String::from("Disables feature #66")},
+            String::from("0x1241") => Flag::Value(String::from("77")),
         };
 
-        let mrg = merge(&fst, &snd);
+        let mrg;
 
         let exp = hashmap!{
-            "A" => "jedna",
-            "B" => "druga",
-            "C" => "trzej",
-            "D" => "czterej",
-            "E" => "pięciu",
+            String::from("10") => Flag::Spec{value: "17".to_string(), comment: String::from("Disables feature #66")},
+            String::from("0x1201") => Flag::Value(String::from("07")),
+            String::from("0x1241") => Flag::Value(String::from("77")),
         };
 
-        assert_eq!(&mrg, &exp)
+        mrg = merge_glob(fst, snd);
+
+        assert_eq!(mrg, exp)
     }
-
-    //#[test]
-    //fn merging_hashes_of_hashes() {
-    //    let fst = hashmap!{
-    //        "A" => hashmap!{
-    //            "1" => "jedna",
-    //            "2" => "druga",
-    //        },
-    //        "B" => hashmap!{
-    //            "3" => "trzecia",
-    //            "4" => "czwarta",
-    //        },
-    //    };
-    //    let snd = hashmap!{
-    //        "A" => hashmap!{
-    //            "1" => "jedna",
-    //            "2" => "druga",
-    //        },
-    //        "B" => hashmap!{
-    //            "3" => "trzecia",
-    //            "4" => "czwarta",
-    //        },
-    //    };
-
-    //    let mrg = merge(&fst, &snd);
-
-    //    let exp = hashmap!{
-    //        "A" => hashmap!{
-    //            "1" => "jedna",
-    //            "2" => "druga",
-    //        },
-    //        "B" => hashmap!{
-    //            "3" => "trzecia",
-    //            "4" => "czwarta",
-    //        },
-    //    };
-
-    //    assert_eq!(&mrg, &exp)
-    //}
-
-    //#[test]
-    //fn flag_conf_serialize() {
-    //    let flag_conf = FlagsConfig {
-    //        global: hashmap!{
-    //            "10".to_string() => Flag::Spec{
-    //                value: "13".to_string(),
-    //                comment: "This is default value".to_string(),
-    //            },
-    //            "17".to_string() => Flag::Value("0xA1".to_string()),
-    //        },
-    //        dependent: hashmap!{
-    //            "A".to_string() => hashmap!{
-    //                "10".to_string() => Flag::Value("20".to_string()),
-    //            },
-    //            "B".to_string() => hashmap!{
-    //                "10".to_string() => Flag::Value("21".to_string()),
-    //            },
-    //        },
-    //    };
-
-    //    let out = serde_yaml::to_string(&flag_conf).unwrap();
-
-    //    println!("[Config]\n{}", &out);
-    //    // non deterministic
-    //    assert_eq!(
-    //        &out,
-    //        "---\nglobal:\n  \"10\":\n    Spec:\n      value: \"13\"\n      comment: This is default value\n  \"17\":\n    Value: 0xA1\ndependent:\n  A:\n    \"10\":\n      Value: \"20\"\n  B:\n    \"10\":\n      Value: \"21\""
-    //    )
-    //}
 
     #[test]
     fn flag_conf_deserialize() {
@@ -214,6 +244,6 @@ mod tests {
                 Ok(r) => r,
                 Err(msg) => panic!["O kurde: {}", msg]
             };
-        println!("{:?}", des)
+        println!("{:?}", des);
     }
 }
