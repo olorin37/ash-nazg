@@ -124,7 +124,7 @@ fn to_flags_string(flags_map: HashMap<String, Flag>, sep_out: &str) -> String {
     out
 }
 
-pub fn go() -> String {
+pub fn compose() -> String {
     let assignments: Vec<(String, String)> = vec![
         ("branch".to_string(), "v1.x".to_string()),
         ("target".to_string(), "A".to_string()),
@@ -155,7 +155,7 @@ pub fn go() -> String {
     output
 }
 
-pub fn gogo() {
+pub fn go() {
     let f = File::open("example/flag_conf_gen1.yaml").unwrap();
     let flag_conf_gen: FlagsConfig = match serde_yaml::from_reader(&f) {
         Ok(r) => r,
@@ -169,10 +169,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn go_checking() {
+    fn compose_checking() {
         let expected = "01=371
-0=0x1037";
-        let output = go();
+0=0x1037
+";
+        let output = compose();
         assert_eq!(output, expected)
 
     }
