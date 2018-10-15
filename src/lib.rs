@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::fmt::Debug;
 
+use std::fs::File;
+
 pub const FLAG_CFG_YAML: &str = "
 ---
 global:
@@ -74,7 +76,7 @@ enum Flag {
     },
 }
 
-fn merge_glob<T, U>(fst: HashMap<T, U>, snd: HashMap<T, U>) -> HashMap<T, U>
+fn merge_hashmap<T, U>(fst: HashMap<T, U>, snd: HashMap<T, U>) -> HashMap<T, U>
     where
     T: Eq + Hash
 {
@@ -94,21 +96,13 @@ fn resolve_dependent<P, Q, T>(
     Q: Eq + Hash + Clone + Debug,
     T: Eq + Hash + Clone + Debug,
 {
+    let empty_hash: HashMap<T, Flag> = HashMap::new();
     let mut out: HashMap<T, Flag> = HashMap::new();
     for a in assignments {
-        println!("Element: {:?}", a);
-        // types errors
-        //let values_map = match input.get(&a.0) {
-        //    Some(map) => map,
-        //    None => HashMap::new(),
-        //};
-        //let flags_map = match values_map.get(&a.1) {
-        //    Some(map) => map,
-        //    None => HashMap::new(),
-        //};
-        //out.extend(flags_map);
-        let values_map = input.get(&a.0).unwrap();
-        let flags_map = values_map.get(&a.1).unwrap();
+        let flags_map = input.get(&a.0).and_then(
+            |h| h.get(&a.1)
+        ).unwrap_or(&empty_hash);
+
         for (key, value) in flags_map.iter() {
             out.insert(key.to_owned(), value.clone());
         }
@@ -130,8 +124,8 @@ fn to_flags_string(flags_map: HashMap<String, Flag>, sep_out: &str) -> String {
     out
 }
 
-pub fn go() {
-    let mut assignments: Vec<(String, String)> = vec![
+pub fn go() -> String {
+    let assignments: Vec<(String, String)> = vec![
         ("branch".to_string(), "v1.x".to_string()),
         ("target".to_string(), "A".to_string()),
     ];
@@ -148,15 +142,26 @@ pub fn go() {
             Err(msg) => panic!["O kurde: {}", msg],
         };
 
-    let globs: HashMap<String, Flag> = merge_glob(des.global, des2.global);
+    let globs: HashMap<String, Flag> = merge_hashmap(des.global, des2.global);
     let deps1: HashMap<String, Flag> = resolve_dependent(des.dependent, &assignments);
     let deps2: HashMap<String, Flag> = resolve_dependent(des2.dependent, &assignments);
-    let deps: HashMap<String, Flag> = merge_glob(deps1, deps2);
+    let deps: HashMap<String, Flag> = merge_hashmap(deps1, deps2);
 
-    let res: HashMap<String, Flag> = merge_glob(globs, deps);
+    let res: HashMap<String, Flag> = merge_hashmap(globs, deps);
 
     let output = to_flags_string(res, "=");
     println!("Our flagconfig:\n{}", output);
+
+    output
+}
+
+pub fn gogo() {
+    let f = File::open("example/flag_conf_gen1.yaml").unwrap();
+    let flag_conf_gen: FlagsConfig = match serde_yaml::from_reader(&f) {
+        Ok(r) => r,
+        Err(msg) => panic!["O kurde: {}", msg],
+    };
+    println!("Loaded: {:?}", flag_conf_gen);
 }
 
 #[cfg(test)]
@@ -165,7 +170,11 @@ mod tests {
 
     #[test]
     fn go_checking() {
-        go()
+        let expected = "01=371
+0=0x1037";
+        let output = go();
+        assert_eq!(output, expected)
+
     }
 
     #[test]
@@ -232,7 +241,7 @@ mod tests {
             String::from("0x1241") => Flag::Value(String::from("77")),
         };
 
-        mrg = merge_glob(fst, snd);
+        mrg = merge_hashmap(fst, snd);
 
         assert_eq!(mrg, exp)
     }
