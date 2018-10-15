@@ -1,0 +1,22 @@
+---
+global:
+    10: 17
+    8: 1000
+    78: 0x0A3
+$$:
+    $var1:
+        val1:
+            10:  13
+        val2:
+            10:
+                comment: nana
+                value: 17
+
+$$$:
+    - name: 10
+      value: 13
+      comment: This is something with xyz
+      matchWith: var1
+      when: val1
+---
+
