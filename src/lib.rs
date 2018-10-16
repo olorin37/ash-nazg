@@ -124,25 +124,19 @@ fn to_flags_string(flags_map: HashMap<String, Flag>, sep_out: &str) -> String {
     out
 }
 
-pub fn go_compose() -> String {
-    let assignments: Vec<(String, String)> = vec![
-        ("branch".to_string(), "v1.x".to_string()),
-        ("target".to_string(), "A".to_string()),
-    ];
+fn compose(x: FlagsConfig, y: FlagsConfig, assignments: Vec<(String, String)>) -> String {
+    let actual_flags: HashMap<String, Flag> = merge_hashmap(
+        merge_hashmap(x.global, y.global),
+        merge_hashmap(
+            resolve_dependent(x.dependent, &assignments),
+            resolve_dependent(y.dependent, &assignments)
+        )
+    );
 
-    let des: FlagsConfig = 
-        match serde_yaml::from_str(&FLAG_CFG_YAML) {
-            Ok(r) => r,
-            Err(msg) => panic!["O kurde: {}", msg],
-        };
+    let output = to_flags_string(actual_flags, "=");
+    println!("Our flagconfig:\n{}", output);
 
-    let des2: FlagsConfig = 
-        match serde_yaml::from_str(&FLAG_CFG_YAML2) {
-            Ok(r) => r,
-            Err(msg) => panic!["O kurde: {}", msg],
-        };
-
-    compose(des, des2, assignments)
+    output
 }
 
 pub fn compose_from_yaml_str(
@@ -165,19 +159,16 @@ pub fn compose_from_yaml_str(
     compose(x, y, assignments)
 }
 
-fn compose(x: FlagsConfig, y: FlagsConfig, assignments: Vec<(String, String)>) -> String {
-    let actual_flags: HashMap<String, Flag> = merge_hashmap(
-        merge_hashmap(x.global, y.global),
-        merge_hashmap(
-            resolve_dependent(x.dependent, &assignments),
-            resolve_dependent(y.dependent, &assignments)
-        )
-    );
+pub fn go_compose() -> String {
+    let assignments: Vec<(String, String)> = vec![
+        ("branch".to_string(), "v1.x".to_string()),
+        ("target".to_string(), "A".to_string()),
+    ];
 
-    let output = to_flags_string(actual_flags, "=");
-    println!("Our flagconfig:\n{}", output);
-
-    output
+    compose_from_yaml_str(
+        FLAG_CFG_YAML,
+        FLAG_CFG_YAML2,
+        assignments)
 }
 
 pub fn go() {
@@ -192,6 +183,25 @@ pub fn go() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn compose_from_yaml_str_checking() {
+        let assignments: Vec<(String, String)> = vec![
+            ("branch".to_string(), "v1.x".to_string()),
+            ("target".to_string(), "A".to_string()),
+        ];
+
+        let expected = "01=371
+0=0x1037
+";
+        let output = compose_from_yaml_str(
+            FLAG_CFG_YAML,
+            FLAG_CFG_YAML2,
+            assignments
+        );
+
+        assert_eq!(output, expected)
+    }
 
     #[test]
     fn compose_checking() {
