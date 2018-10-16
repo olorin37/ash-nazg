@@ -2,7 +2,7 @@ extern crate ash_nazg;
 
 fn main() {
     println!("Hello, world! {}", 5);
-    ash_nazg::compose();
+    ash_nazg::go_compose();
 
     println!(">>> ---------------------------------------------- <<<");
     ash_nazg::go();

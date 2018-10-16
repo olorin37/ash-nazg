@@ -124,7 +124,7 @@ fn to_flags_string(flags_map: HashMap<String, Flag>, sep_out: &str) -> String {
     out
 }
 
-pub fn compose() -> String {
+pub fn go_compose() -> String {
     let assignments: Vec<(String, String)> = vec![
         ("branch".to_string(), "v1.x".to_string()),
         ("target".to_string(), "A".to_string()),
@@ -142,14 +142,39 @@ pub fn compose() -> String {
             Err(msg) => panic!["O kurde: {}", msg],
         };
 
-    let globs: HashMap<String, Flag> = merge_hashmap(des.global, des2.global);
-    let deps1: HashMap<String, Flag> = resolve_dependent(des.dependent, &assignments);
-    let deps2: HashMap<String, Flag> = resolve_dependent(des2.dependent, &assignments);
-    let deps: HashMap<String, Flag> = merge_hashmap(deps1, deps2);
+    compose(des, des2, assignments)
+}
 
-    let res: HashMap<String, Flag> = merge_hashmap(globs, deps);
+pub fn compose_from_yaml_str(
+    yml1: &str,
+    yml2: &str,
+    assignments: Vec<(String, String)>
+    ) -> String {
 
-    let output = to_flags_string(res, "=");
+    let x: FlagsConfig =
+        match serde_yaml::from_str(yml1) {
+            Ok(r) => r,
+            Err(msg) => panic!["O j: {}", msg],
+        };
+    let y: FlagsConfig =
+        match serde_yaml::from_str(yml2) {
+            Ok(r) => r,
+            Err(msg) => panic!["O i: {}", msg],
+        };
+
+    compose(x, y, assignments)
+}
+
+fn compose(x: FlagsConfig, y: FlagsConfig, assignments: Vec<(String, String)>) -> String {
+    let actual_flags: HashMap<String, Flag> = merge_hashmap(
+        merge_hashmap(x.global, y.global),
+        merge_hashmap(
+            resolve_dependent(x.dependent, &assignments),
+            resolve_dependent(y.dependent, &assignments)
+        )
+    );
+
+    let output = to_flags_string(actual_flags, "=");
     println!("Our flagconfig:\n{}", output);
 
     output
@@ -170,10 +195,26 @@ mod tests {
 
     #[test]
     fn compose_checking() {
+        let assignments: Vec<(String, String)> = vec![
+            ("branch".to_string(), "v1.x".to_string()),
+            ("target".to_string(), "A".to_string()),
+        ];
+
+        let des: FlagsConfig =
+            match serde_yaml::from_str(&FLAG_CFG_YAML) {
+                Ok(r) => r,
+                Err(msg) => panic!["O kurde: {}", msg],
+            };
+
+        let des2: FlagsConfig =
+            match serde_yaml::from_str(&FLAG_CFG_YAML2) {
+                Ok(r) => r,
+                Err(msg) => panic!["O kurde: {}", msg],
+            };
         let expected = "01=371
 0=0x1037
 ";
-        let output = compose();
+        let output = compose(des, des2, assignments);
         assert_eq!(output, expected)
 
     }
