@@ -93,6 +93,18 @@ impl FlagsConfig {
             Err(msg) => panic!["String cannot be parsed to FlagsConfig. {}", msg],
         }
     }
+
+    fn merge_to(&mut self: FlagsConfig, other: FlagsConfig, assignments: Vec<(String, String)>) -> String {
+        // TODO: we could use just regural extend here and it should be done separately for both
+        // parts of structure.
+        let actual_flags: HashMap<String, Flag> = merge_hashmap(
+            merge_hashmap(self.global, other.global),
+            merge_hashmap(
+                resolve_dependent(self.dependent, &assignments),
+                resolve_dependent(other.dependent, &assignments)
+            )
+        );
+    }
 }
 
 fn merge_hashmap<T, U>(fst: HashMap<T, U>, snd: HashMap<T, U>) -> HashMap<T, U>
