@@ -61,6 +61,7 @@ dependent:
           value: \"3711\"
 ";
 
+/// Main data structure which represents Flags Config
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 struct FlagsConfig {
     global: HashMap<String, Flag>,
@@ -76,8 +77,26 @@ enum Flag {
     },
 }
 
+impl FlagsConfig {
+    /// Loads Flags Config from string slice.
+    fn new(from: &str) -> FlagsConfig {
+        match serde_yaml::from_str(from) {
+            Ok(flags_conf) => flags_conf,
+            Err(msg) => panic!["String cannot be parsed to FlagsConfig. {}", msg],
+        }
+    }
+
+    /// Loads Flags Config from file
+    fn from_reader(reader: &File) -> FlagsConfig {
+        match serde_yaml::from_reader(reader) {
+            Ok(flags_conf) => flags_conf,
+            Err(msg) => panic!["String cannot be parsed to FlagsConfig. {}", msg],
+        }
+    }
+}
+
 fn merge_hashmap<T, U>(fst: HashMap<T, U>, snd: HashMap<T, U>) -> HashMap<T, U>
-    where
+where
     T: Eq + Hash
 {
    let mut output_map : HashMap<T, U> = HashMap::new();
@@ -145,16 +164,8 @@ pub fn compose_from_yaml_str(
     assignments: Vec<(String, String)>
     ) -> String {
 
-    let x: FlagsConfig =
-        match serde_yaml::from_str(yml1) {
-            Ok(r) => r,
-            Err(msg) => panic!["O j: {}", msg],
-        };
-    let y: FlagsConfig =
-        match serde_yaml::from_str(yml2) {
-            Ok(r) => r,
-            Err(msg) => panic!["O i: {}", msg],
-        };
+    let x = FlagsConfig::new(yml1);
+    let y = FlagsConfig::new(yml2);
 
     compose(x, y, assignments)
 }
@@ -168,15 +179,13 @@ pub fn go_compose() -> String {
     compose_from_yaml_str(
         FLAG_CFG_YAML,
         FLAG_CFG_YAML2,
-        assignments)
+        assignments
+    )
 }
 
 pub fn go() {
     let f = File::open("example/flag_conf_gen1.yaml").unwrap();
-    let flag_conf_gen: FlagsConfig = match serde_yaml::from_reader(&f) {
-        Ok(r) => r,
-        Err(msg) => panic!["O kurde: {}", msg],
-    };
+    let flag_conf_gen = FlagsConfig::from_reader(&f);
     println!("Loaded: {:?}", flag_conf_gen);
 }
 
@@ -210,17 +219,8 @@ mod tests {
             ("target".to_string(), "A".to_string()),
         ];
 
-        let des: FlagsConfig =
-            match serde_yaml::from_str(&FLAG_CFG_YAML) {
-                Ok(r) => r,
-                Err(msg) => panic!["O kurde: {}", msg],
-            };
-
-        let des2: FlagsConfig =
-            match serde_yaml::from_str(&FLAG_CFG_YAML2) {
-                Ok(r) => r,
-                Err(msg) => panic!["O kurde: {}", msg],
-            };
+        let des = FlagsConfig::new(&FLAG_CFG_YAML);
+        let des2 = FlagsConfig::new(&FLAG_CFG_YAML2);
         let expected = "01=371
 0=0x1037
 ";
@@ -253,11 +253,7 @@ mod tests {
 
     #[test]
     fn resolving_dependent() {
-        let des: FlagsConfig = 
-            match serde_yaml::from_str(&FLAG_CFG_YAML) {
-                Ok(r) => r,
-                Err(msg) => panic!["O kurde: {}", msg],
-            };
+        let des = FlagsConfig::new(&FLAG_CFG_YAML);
         println!("{:?}", des);
         let sels = vec![
             ("branch".to_string(), "v1.x".to_string()),
@@ -300,11 +296,7 @@ mod tests {
 
     #[test]
     fn flag_conf_deserialize() {
-        let des: FlagsConfig = 
-            match serde_yaml::from_str(&FLAG_CFG_YAML) {
-                Ok(r) => r,
-                Err(msg) => panic!["O kurde: {}", msg]
-            };
+        let des = FlagsConfig::new(&FLAG_CFG_YAML);
         println!("{:?}", des);
     }
 }
