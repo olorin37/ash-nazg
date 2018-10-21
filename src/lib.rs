@@ -1,7 +1,5 @@
-#[macro_use]
-extern crate maplit;
-#[macro_use]
-extern crate serde_derive;
+#[macro_use] extern crate maplit;
+#[macro_use] extern crate serde_derive;
 extern crate serde_yaml;
 extern crate yaml_rust;
 
@@ -14,51 +12,43 @@ use std::fs::File;
 pub const FLAG_CFG_YAML: &str = "
 ---
 global:
-  \"0\":
-    Value: \"0x1089\"
+  \"0\": \"0x1089\"
 dependent:
   \"branch\":
     \"v1.x\":
       \"01\":
-        Spec:
-          comment: Makes possible to use debug mode
-          value: \"-1\"
+        comment: Makes possible to use debug mode
+        value: \"-1\"
   \"target\":
     \"3310r\":
       \"01\":
-        Spec:
-          comment: Makes possible to use debug mode
-          value: \"10\"
+        comment: Makes possible to use debug mode
+        value: \"10\"
     \"5511\":
       \"01\":
-        Spec:
-          comment: Makes possible to use debug mode
-          value: \"11\"
+        comment: Makes possible to use debug mode
+        value: \"11\"
 ";
 
 pub const FLAG_CFG_YAML2: &str = "
 ---
 global:
-  \"0\":
-    Value: \"0x1037\"
+  \"0\": \"0x1037\"
 dependent:
   \"branch\":
     \"v1.x\":
       \"01\":
-        Spec:
-          comment: Makes possible to use debug mode
-          value: \"371\"
+        comment: Makes possible to use debug mode
+        value: \"371\"
   \"target\":
     \"3310r\":
       \"01\":
-        Spec:
-          comment: Makes possible to use debug mode
-          value: \"3710\"
+        comment: Makes possible to use debug mode
+        value: \"3710\"
     \"5511\":
       \"01\":
-        Spec:
-          comment: Makes possible to use debug mode
-          value: \"3711\"
+        comment: Makes possible to use debug mode
+        value: \"3711\"
 ";
 
 /// Main data structure which represents Flags Config
@@ -69,6 +59,7 @@ struct FlagsConfig {
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
 enum Flag {
     Value(String),
     Spec{
