@@ -78,24 +78,24 @@ impl FlagsConfig {
     }
 
     /// Loads Flags Config from file
-    fn from_reader(reader: &File) -> FlagsConfig {
-        match serde_yaml::from_reader(reader) {
+    fn from_reader(file: &File) -> FlagsConfig {
+        match serde_yaml::from_reader(file) {
             Ok(flags_conf) => flags_conf,
             Err(msg) => panic!["String cannot be parsed to FlagsConfig. {}", msg],
         }
     }
 
-    fn merge_to(&mut self: FlagsConfig, other: FlagsConfig, assignments: Vec<(String, String)>) -> String {
-        // TODO: we could use just regural extend here and it should be done separately for both
-        // parts of structure.
-        let actual_flags: HashMap<String, Flag> = merge_hashmap(
-            merge_hashmap(self.global, other.global),
-            merge_hashmap(
-                resolve_dependent(self.dependent, &assignments),
-                resolve_dependent(other.dependent, &assignments)
-            )
-        );
-    }
+   // fn merge_to(&mut self: FlagsConfig, other: FlagsConfig, assignments: Vec<(String, String)>) -> String {
+   //     // TODO: we could use just regural extend here and it should be done separately for both
+   //     // parts of structure.
+   //     let actual_flags: HashMap<String, Flag> = merge_hashmap(
+   //         merge_hashmap(self.global, other.global),
+   //         merge_hashmap(
+   //             resolve_dependent(self.dependent, &assignments),
+   //             resolve_dependent(other.dependent, &assignments)
+   //         ),
+   //     );
+   // }
 }
 
 fn merge_hashmap<T, U>(fst: HashMap<T, U>, snd: HashMap<T, U>) -> HashMap<T, U>
@@ -161,7 +161,7 @@ fn compose(x: FlagsConfig, y: FlagsConfig, assignments: Vec<(String, String)>) -
     output
 }
 
-pub fn compose_from_yaml_str(
+pub fn compose_from_str(
     yml1: &str,
     yml2: &str,
     assignments: Vec<(String, String)>
@@ -173,13 +173,25 @@ pub fn compose_from_yaml_str(
     compose(x, y, assignments)
 }
 
+pub fn compose_from_file(
+    file1: &File,
+    file2: &File,
+    assignments: Vec<(String, String)>
+    ) -> String {
+
+    let x = FlagsConfig::from_reader(file1);
+    let y = FlagsConfig::from_reader(file2);
+
+    compose(x, y, assignments)
+}
+
 pub fn go_compose() -> String {
     let assignments: Vec<(String, String)> = vec![
         ("branch".to_string(), "v1.x".to_string()),
         ("target".to_string(), "A".to_string()),
     ];
 
-    compose_from_yaml_str(
+    compose_from_str(
         FLAG_CFG_YAML,
         FLAG_CFG_YAML2,
         assignments
@@ -187,7 +199,7 @@ pub fn go_compose() -> String {
 }
 
 pub fn go() {
-    let f = File::open("example/flag_conf_gen1.yaml").unwrap();
+    let f = File::open("example/flag_conf_v1.x.yaml").unwrap();
     let flag_conf_gen = FlagsConfig::from_reader(&f);
     println!("Loaded: {:?}", flag_conf_gen);
 }
@@ -206,7 +218,7 @@ mod tests {
         let expected = "01=371
 0=0x1037
 ";
-        let output = compose_from_yaml_str(
+        let output = compose_from_str(
             FLAG_CFG_YAML,
             FLAG_CFG_YAML2,
             assignments

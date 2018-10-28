@@ -1,0 +1,14 @@
+
+---
+global:
+  10: 17
+  8: 1000
+dependent:
+  $target:
+    s8:
+      0x6969: -1
+    s5:
+      0x6969: 77
+      77:
+        comment: Here is something.
+        value: 67
