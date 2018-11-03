@@ -1,7 +1,7 @@
-#[macro_use] extern crate serde_derive;
-#[macro_use] extern crate maplit;
 extern crate serde_yaml;
 extern crate yaml_rust;
+
+#[macro_use] extern crate serde_derive;
 
 use std::collections::HashMap;
 use std::hash::Hash;
