@@ -1,15 +1,12 @@
-
 ---
 global:
-  8: 2000
-  10: 10
+  "1": "2000"
+  "2": "2001"
 dependent:
-  $target:
-    s8:
-      0x6969: -1
-      10: 50
-    s5:
-      0x6969: 47
-      77:
+  target:
+    s1:
+      "2": "2101"
+    s2:
+      "2":
         comment: Here is something.
-        value: 57
+        value:  "2201"

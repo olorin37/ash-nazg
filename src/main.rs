@@ -31,11 +31,11 @@ fn main() {
                             .and_then(|d| d.deserialize())
                             .unwrap_or_else(|e| e.exit());
 
-    println!("Args: {:?}", args);
+    eprintln!("Args: {:?}", args);
 
     if args.arg_file.len() > 2 {
-        println!("More than two flag generator files not yet supported.");
-        println!("Only two first file will be taken into account.");
+        eprintln!("More than two flag generator files not yet supported.");
+        eprintln!("Only two first file will be taken into account.");
     } else if args.arg_file.len() < 2 {
         println!("Currently only exactly to files are supprted.");
     } else {
@@ -46,11 +46,13 @@ fn main() {
         for sstr in args.flag_constraint.iter() {
             let o: Vec<&str> = sstr.split("=").collect();
             constr.push((o[0].to_string(), o[1].to_string()));
-            println!(">> {}: {}", o[0], o[1]);
+            eprintln!(">> {}: {}", o[0], o[1]);
         }
+        eprintln!("-- -- {:?}", constr);
 
         let out =
           ash_nazg::compose_from_file(&fst, &snd, constr);
-        println!("Nice output: {}", out);
+        eprintln!("Nice output:");
+        print!("{}", out);
     }
 }

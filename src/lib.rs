@@ -1,5 +1,5 @@
-#[macro_use] extern crate maplit;
 #[macro_use] extern crate serde_derive;
+#[macro_use] extern crate maplit;
 extern crate serde_yaml;
 extern crate yaml_rust;
 
@@ -71,18 +71,24 @@ enum Flag {
 impl FlagsConfig {
     /// Loads Flags Config from string slice.
     fn new(from: &str) -> FlagsConfig {
-        match serde_yaml::from_str(from) {
+        let out = match serde_yaml::from_str(from) {
             Ok(flags_conf) => flags_conf,
             Err(msg) => panic!["String cannot be parsed to FlagsConfig. {}", msg],
-        }
+        };
+        eprintln!("new FlagsConfig: {:?}", out); //debug
+
+        out
     }
 
     /// Loads Flags Config from file
     fn from_reader(file: &File) -> FlagsConfig {
-        match serde_yaml::from_reader(file) {
+        let out = match serde_yaml::from_reader(file) {
             Ok(flags_conf) => flags_conf,
             Err(msg) => panic!["String cannot be parsed to FlagsConfig. {}", msg],
-        }
+        };
+        eprintln!("new FlagsConfig: {:?}", out); //debug
+
+        out
     }
 
    // fn merge_to(&mut self: FlagsConfig, other: FlagsConfig, assignments: Vec<(String, String)>) -> String {
@@ -111,7 +117,7 @@ where
 
 fn resolve_dependent<P, Q, T>(
     input: HashMap<P, HashMap<Q, HashMap<T, Flag>>>,
-    assignments: &Vec<(P, Q)>
+    constraints: &Vec<(P, Q)>
 ) -> HashMap<T, Flag>
     where
     P: Eq + Hash + Clone + Debug,
@@ -120,9 +126,9 @@ fn resolve_dependent<P, Q, T>(
 {
     let empty_hash: HashMap<T, Flag> = HashMap::new();
     let mut out: HashMap<T, Flag> = HashMap::new();
-    for a in assignments {
-        let flags_map = input.get(&a.0).and_then(
-            |h| h.get(&a.1)
+    for constr in constraints {
+        let flags_map = input.get(&constr.0).and_then(
+            |h| h.get(&constr.1)
         ).unwrap_or(&empty_hash);
 
         for (key, value) in flags_map.iter() {
@@ -156,7 +162,7 @@ fn compose(x: FlagsConfig, y: FlagsConfig, assignments: Vec<(String, String)>) -
     );
 
     let output = to_flags_string(actual_flags, "=");
-    println!("Our flagconfig:\n{}", output);
+    eprintln!("Our flagconfig:\n{}", output);
 
     output
 }
@@ -201,7 +207,7 @@ pub fn go_compose() -> String {
 pub fn go() {
     let f = File::open("example/flag_conf_v1.x.yaml").unwrap();
     let flag_conf_gen = FlagsConfig::from_reader(&f);
-    println!("Loaded: {:?}", flag_conf_gen);
+    eprintln!("Loaded: {:?}", flag_conf_gen);
 }
 
 #[cfg(test)]
