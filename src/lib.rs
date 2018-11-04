@@ -1,55 +1,14 @@
 extern crate serde_yaml;
 extern crate yaml_rust;
 
+#[allow(unused_imports)]
+#[macro_use] extern crate maplit;
 #[macro_use] extern crate serde_derive;
 
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::fmt::Debug;
-
 use std::fs::File;
-
-pub const FLAG_CFG_YAML: &str = "
----
-global:
-  \"0\": \"0x1089\"
-dependent:
-  \"branch\":
-    \"v1.x\":
-      \"01\":
-        comment: Makes possible to use debug mode
-        value: \"-1\"
-  \"target\":
-    \"3310r\":
-      \"01\":
-        comment: Makes possible to use debug mode
-        value: \"10\"
-    \"5511\":
-      \"01\":
-        comment: Makes possible to use debug mode
-        value: \"11\"
-";
-
-pub const FLAG_CFG_YAML2: &str = "
----
-global:
-  \"0\": \"0x1037\"
-dependent:
-  \"branch\":
-    \"v1.x\":
-      \"01\":
-        comment: Makes possible to use debug mode
-        value: \"371\"
-  \"target\":
-    \"3310r\":
-      \"01\":
-        comment: Makes possible to use debug mode
-        value: \"3710\"
-    \"5511\":
-      \"01\":
-        comment: Makes possible to use debug mode
-        value: \"3711\"
-";
 
 /// Main data structure which represents Flags Config
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
@@ -58,6 +17,8 @@ struct FlagsConfig {
     dependent: HashMap<String, HashMap<String, HashMap<String, Flag>>>,
 }
 
+/// Flag representation (it allows to provide a comment for a flag, there is
+/// possibility to extend that with other new fields).
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 enum Flag {
@@ -67,6 +28,16 @@ enum Flag {
         comment: String,
     },
 }
+
+// TODO implement it proper ..
+// #[serde(serialize_with="ser_var_name", deserialize_with="de_var_name")] 
+//pub fn ser_var_name<S: Serializer>(_: &X, _: S) -> StdResult<S::Ok, S::Error> {
+//      unimplemented!()
+//}
+//
+//pub fn de_var_name<'de, D: Deserializer<'de>>(_: D) -> StdResult<X, D::Error> {
+//      unimplemented!()
+//}
 
 impl FlagsConfig {
     /// Loads Flags Config from string slice.
@@ -90,18 +61,6 @@ impl FlagsConfig {
 
         out
     }
-
-   // fn merge_to(&mut self: FlagsConfig, other: FlagsConfig, assignments: Vec<(String, String)>) -> String {
-   //     // TODO: we could use just regural extend here and it should be done separately for both
-   //     // parts of structure.
-   //     let actual_flags: HashMap<String, Flag> = merge_hashmap(
-   //         merge_hashmap(self.global, other.global),
-   //         merge_hashmap(
-   //             resolve_dependent(self.dependent, &assignments),
-   //             resolve_dependent(other.dependent, &assignments)
-   //         ),
-   //     );
-   // }
 }
 
 fn merge_hashmap<T, U>(fst: HashMap<T, U>, snd: HashMap<T, U>) -> HashMap<T, U>
@@ -191,19 +150,6 @@ pub fn compose_from_file(
     compose(x, y, assignments)
 }
 
-pub fn go_compose() -> String {
-    let assignments: Vec<(String, String)> = vec![
-        ("branch".to_string(), "v1.x".to_string()),
-        ("target".to_string(), "A".to_string()),
-    ];
-
-    compose_from_str(
-        FLAG_CFG_YAML,
-        FLAG_CFG_YAML2,
-        assignments
-    )
-}
-
 pub fn go() {
     let f = File::open("example/flag_conf_v1.x.yaml").unwrap();
     let flag_conf_gen = FlagsConfig::from_reader(&f);
@@ -213,6 +159,48 @@ pub fn go() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+const FLAG_CFG_YAML: &str = "
+---
+global:
+  \"0\": \"0x1089\"
+dependent:
+  \"branch\":
+    \"v1.x\":
+      \"01\":
+        comment: Makes possible to use debug mode
+        value: \"-1\"
+  \"target\":
+    \"3310r\":
+      \"01\":
+        comment: Makes possible to use debug mode
+        value: \"10\"
+    \"5511\":
+      \"01\":
+        comment: Makes possible to use debug mode
+        value: \"11\"
+";
+
+const FLAG_CFG_YAML2: &str = "
+---
+global:
+  \"0\": \"0x1037\"
+dependent:
+  \"branch\":
+    \"v1.x\":
+      \"01\":
+        comment: Makes possible to use debug mode
+        value: \"371\"
+  \"target\":
+    \"3310r\":
+      \"01\":
+        comment: Makes possible to use debug mode
+        value: \"3710\"
+    \"5511\":
+      \"01\":
+        comment: Makes possible to use debug mode
+        value: \"3711\"
+";
 
     #[test]
     fn compose_from_yaml_str_checking() {
